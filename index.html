@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lawful Survivor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: monospace;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #222;
+      border: 2px solid #555;
+    }
+    #score {
+      margin: 1rem;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0 | High Score: 0</div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+
+    let player = { x: 200, y: 550, size: 10, speed: 4 };
+    let keys = {};
+    let obstacles = [];
+    let frame = 0;
+    let score = 0;
+    let highScore = localStorage.getItem('lawful_high_score') || 0;
+    let gameOver = false;
+
+    document.addEventListener('keydown', e => keys[e.key] = true);
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+    function drawPlayer() {
+      ctx.fillStyle = '#0f0';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function updatePlayer() {
+      if (keys['ArrowLeft'] && player.x - player.size > 0) player.x -= player.speed;
+      if (keys['ArrowRight'] && player.x + player.size < canvas.width) player.x += player.speed;
+      if (keys['ArrowUp'] && player.y - player.size > 0) player.y -= player.speed;
+      if (keys['ArrowDown'] && player.y + player.size < canvas.height) player.y += player.speed;
+    }
+
+    function createObstacle() {
+      let gapWidth = 80;
+      let gapX = Math.random() * (canvas.width - gapWidth);
+      obstacles.push({ y: 0, speed: 2, gapX, gapWidth });
+    }
+
+    function updateObstacles() {
+      for (let ob of obstacles) {
+        ob.y += ob.speed;
+      }
+      obstacles = obstacles.filter(ob => ob.y < canvas.height);
+    }
+
+    function drawObstacles() {
+      ctx.fillStyle = '#f33';
+      for (let ob of obstacles) {
+        ctx.fillRect(0, ob.y, ob.gapX, 10);
+        ctx.fillRect(ob.gapX + ob.gapWidth, ob.y, canvas.width - (ob.gapX + ob.gapWidth), 10);
+      }
+    }
+
+    function checkCollision() {
+      for (let ob of obstacles) {
+        if (player.y > ob.y && player.y < ob.y + 10) {
+          if (player.x < ob.gapX || player.x > ob.gapX + ob.gapWidth) {
+            gameOver = true;
+          }
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawObstacles();
+    }
+
+    function update() {
+      if (gameOver) {
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px monospace';
+        ctx.fillText('Game Over! Refresh to restart.', 50, canvas.height / 2);
+        return;
+      }
+
+      frame++;
+      score = Math.floor(frame / 5);
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('lawful_high_score', highScore);
+      }
+
+      if (frame % 60 === 0) createObstacle();
+      updatePlayer();
+      updateObstacles();
+      checkCollision();
+      draw();
+      scoreDisplay.textContent = `Score: ${score} | High Score: ${highScore}`;
+
+      requestAnimationFrame(update);
+    }
+
+    update();
+  </script>
+</body>
+</html>
